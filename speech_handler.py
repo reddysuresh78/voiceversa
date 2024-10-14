@@ -8,36 +8,40 @@ import torch
 from transformers import pipeline
 import os
 from utilities import Globals
+import whisper
 
 # Add this line at the beginning of your file, after the imports
 os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
-
-
+ 
 logger = logging.getLogger(__name__)
 
 class SpeechHandler:
     def __init__(self):
         self.is_recording = False
         self.recorded_audio = None
-        self.sample_rate = 44100  # Standard sample rate
+        self.sample_rate = 16000  # Standard sample rate
         
         # Determine the device to use
         #device = "mps" if torch.backends.mps.is_available() else "cpu"
         device = "cpu"
         
-        self.transcriber = pipeline("automatic-speech-recognition", 
-                                    model="openai/whisper-small", 
-                                    device=device)
+        self.transcriber = whisper.load_model("small")
         
-        self.translator = pipeline("translation", 
-                                   model="Helsinki-NLP/opus-mt-en-ROMANCE", 
+        self.translators = {}
+        
+        models_names = [ "en-es",  "es-en", "en-zh", "zh-en", "en-tl", "tl-en" ]
+        for model_name in models_names:
+            langs = model_name.split("-")
+            self.translators[model_name] = pipeline("translation_" + langs[0] + "_to_" + langs[1], 
+                                   model="Helsinki-NLP/opus-mt-" + model_name, 
+                                   max_new_tokens=512,
                                    device=device)
-        
+     
         logger.info(f"Using device: {device}")
 
     def record_audio(self):
         logger.info("Starting audio recording...")
-        self.recorded_audio = sd.rec(int(5 * self.sample_rate), samplerate=self.sample_rate, channels=1)
+        self.recorded_audio = sd.rec(int(5 * self.sample_rate), samplerate=self.sample_rate, channels=1, device=Globals.input_device, blocking=True, dtype='int16')
         sd.wait()
         logger.info("Audio recording completed.")
 
@@ -67,24 +71,32 @@ class SpeechHandler:
         else:
             logger.warning("No audio recorded to save.")
 
-    def transcribe(self):
+    def transcribe(self, language):
         if self.recorded_audio is not None:
-            audio = self.recorded_audio.flatten()
-            result = self.transcriber(audio)
-            return result["text"]
+            audio = self.recorded_audio.flatten().astype(np.float32) / 32768.0
+            result = self.transcriber.transcribe (audio=audio, language=self.get_language_code( language) )
+            print(result["text"])
+            return result["text"].strip()
         else:
             logger.warning("No audio recorded to transcribe.")
             return ""
 
     def translate(self, text, source_lang, target_lang):
-        # Implementation here
-        pass
+ 
+        src_lang = self.get_language_code(source_lang)
+        tgt_lang = self.get_language_code(target_lang)
+        model_name = src_lang + "-" + tgt_lang
+        
+        print(f"Selected model {model_name} ")
+        output = self.translators[model_name](text)
+  
+        return output[0]['translation_text'].strip()
 
     def get_language_code(self, language):
         language_codes = {
             'english': 'en',
             'spanish': 'es',
-            'french': 'fr',
-            'german': 'de'
+            'tagalog': 'tl',
+            'mandarin': 'zh'
         }
         return language_codes.get(language.lower(), 'en')

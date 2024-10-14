@@ -22,11 +22,11 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(central_widget)
 
         self.source_lang_combo = QComboBox()
-        self.source_lang_combo.addItems(["English", "Spanish", "French", "German"])
+        self.source_lang_combo.addItems(["English", "Spanish", "Tagalog", "Mandarin"])
         layout.addWidget(self.source_lang_combo)
 
         self.target_lang_combo = QComboBox()
-        self.target_lang_combo.addItems(["Spanish", "French", "German", "English"])
+        self.target_lang_combo.addItems([ "Spanish", "Tagalog", "Mandarin", "English"])
         layout.addWidget(self.target_lang_combo)
 
         self.record_button = QPushButton("Record (5 seconds)")
@@ -67,11 +67,12 @@ class MainWindow(QMainWindow):
         self.speech_handler.play_audio()
 
     def translate_audio(self):
-        transcription = self.speech_handler.transcribe()
-        self.transcription_text.setText(transcription)
-
         source_lang = self.source_lang_combo.currentText().lower()
         target_lang = self.target_lang_combo.currentText().lower()
+
+        transcription = self.speech_handler.transcribe( source_lang )
+        self.transcription_text.setText(transcription)
+
         translation = self.speech_handler.translate(transcription, source_lang, target_lang)
         self.translation_text.setText(translation)
 

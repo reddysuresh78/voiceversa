@@ -40,9 +40,9 @@ class Globals:
         logger.info("Identifying input sound device...") 
 
         devices = sd.query_devices()
-        cls.input_sound_device = sd.default.device[0]  # [0] is the input device, [1] is the output device
+        cls.input_device = sd.default.device[0]  # [0] is the input device, [1] is the output device
 
-        logger.info(f"Input sound device Id: {cls.input_sound_device}" )
+        logger.info(f"Input sound device Id: {cls.input_device}" )
 
         cls.lang_to_code_map = { "English": "en", "Spanish": "es", "Tagalog": "tl", "Mandarin": "zh" }
         
